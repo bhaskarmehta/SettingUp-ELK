@@ -1,0 +1,85 @@
+# Steps to Setup ELK(Elasticsearch, Kibana and Logstash) without Docker Compose
+
+# Create a docker network
+1) docker network create elk-network
+
+# Run the elasticsearch docker image in the above network on port 9200 from the repo
+2) docker run -d --name elasticsearch --net elk-network -p 9200:9200 -p 9300:9300 -it bitnami/elasticsearch:8.6.2
+
+
+# Run the logstash docker image in the above network  from the bitnami or other repo
+3) docker run -d --name logstash --net elk-network -it -v "$PWD":/logstash bitnami/logstash:8.6.2 -f /logstash/logstash.conf  
+
+docker run -d --name logstash --net elk-network -v "$PWD":/logstash -it -v /home/ubuntu/logstash/logstash.conf:/logstash/logstash.conf  bitnami/logstash:8.6.2
+
+
+# Run the kibana docker image in the above network on port 5601 from the bitnami or other repo
+4) docker run -d --name kibana --net elk-network -it  -p 5601:5601 bitnami/kibana:8.6.2
+
+
+##Input section
+input {
+  file {
+         path => "/var/log/apache/access.log"
+    }
+}
+
+##Output section
+output {
+  elasticsearch { 
+    hosts => ["localhost:9200"] 
+  }
+}
+
+input {
+stdin{}
+}
+output {
+  elasticsearch {
+    hosts => ["http://elasticsearch:9200"]
+  }
+}
+
+
+# https://logz.io/blog/debug-logstash/
+
+
+version: '3'
+services:
+  elasticsearch:
+    image: bitnami/elasticsearch:8.6.2
+    container_name: elasticsearch
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - elastic_data:/usr/share/elasticsearch/data
+    networks:
+        - elk
+  logstash:
+    image: bitnami/logstash:8.6.2
+    container_name: logstash
+    volumes:
+      - ./logstash/:/logstash_dir
+    command: logstash -f /logstash_dir/logstash.conf
+    depends_on:
+       - Elasticsearch
+    ports:
+      - '5000:5000'
+    networks:
+       - elk
+  kibana:
+    image: bitnami/kibana:8.6.2
+    container_name: kibana
+    ports:
+      - "5601:5601"
+    environment:
+        - ELASTICSEARCH_URL=http://elasticsearch:9200
+    depends_on:
+      - Elasticsearch
+    networks:
+      - elk
+volumes:
+   elastic_data: {}
+networks:
+   elk:
