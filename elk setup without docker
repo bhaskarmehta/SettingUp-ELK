@@ -1,0 +1,67 @@
+Steps to follow - 
+Prerequisites is that you must have atleast 2 cpu and 4 GM Memory.
+
+Install and Configure Elasticsearch
+--------------------------------------
+1) curl -fsSL https://artifacts.elastic.co/GPG-KEY-elasticsearch |sudo gpg --dearmor -o /usr/share/keyrings/elastic.gpg
+2) echo "deb [signed-by=/usr/share/keyrings/elastic.gpg] https://artifacts.elastic.co/packages/7.x/apt stable main" | sudo tee -a /etc/apt/sources.list.d/elastic-7.x.list
+3) sudo apt update
+4) sudo apt install elasticsearch
+5) sudo vi /etc/elasticsearch/elasticsearch.yml
+And uncomment these line
+# ---------------------------------- Network -----------------------------------
+#
+# By default Elasticsearch is only accessible on localhost. Set a different
+# address here to expose this node on the network:
+#
+network.host: localhost
+#
+# By default Elasticsearch listens for HTTP traffic on the first free port it
+# finds starting at 9200. Set a specific HTTP port here:
+#
+http.port: 9200
+#
+# For more information, consult the network module documentation.
+#
+
+6) sudo systemctl start elasticsearch
+7) sudo systemctl enable elasticsearch
+8) curl -X GET "localhost:9200"
+
+
+Install And Configure Kibana
+----------------------------
+1) sudo apt install kibana
+2) sudo systemctl enable kibana
+3) sudo systemctl start kibana
+4) sudo vi /etc/kibana/kibana.yml
+And Uncomment this below line and replace localhost with 0.0.0.0
+server.port:5601
+server.host:localhost
+elasticsearch.hosts:["http://localhost:9200"]
+
+5) sudo systemctl restart kibana
+
+Install And Configure Logstash
+-------------------------------
+1) sudo apt install logstash
+2) In /etc/logstash/conf.d path create a logstash.conf file or any name with .conf
+For example vi logstash.conf
+input {
+  file {
+    path => "/var/log/nginx/*.log"  // For this install nginx. It will take nginx log
+    start_position => "beginning"
+    sincedb_path => "/dev/null"
+  }
+}
+
+
+output {
+  elasticsearch {
+    hosts => ["localhost:9200"]
+    index => "nginx_logs" // In kibana dashboard nginx_logs pattern will be there.
+  }
+}
+
+3) Go to /usr/share/logstash/bin and run ./logstash -f /etc/logstash/conf.d/logstash.conf (or) /usr/share/logstash/bin/logstash -f /etc/logstash/conf.d/logstash.conf
+
